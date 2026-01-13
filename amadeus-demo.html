@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern Flight Search Demo</title>
+  <link rel="stylesheet" href="amadeus-demo.css">
+</head>
+<body>
+  <header>
+    <h1>FlightFinder</h1>
+    <nav class="site-nav" aria-label="Main navigation">
+      <a href="#">Home</a>
+      <a href="#search">Search Flights</a>
+      <a href="#about">About</a>
+      <a href="history.html">History</a>
+    </nav>
+  </header>
+  <main>
+  <section id="search" class="card">
+      <h2>Search Flights</h2>
+  <form id="flight-form" aria-label="Flight search form">
+        <div class="form-row">
+          <label for="origin">From</label>
+          <input type="text" id="origin" name="origin" autocomplete="off" required placeholder="City or airport">
+        </div>
+        <div class="form-row">
+          <label for="destination">To</label>
+          <input type="text" id="destination" name="destination" autocomplete="off" required placeholder="City or airport">
+        </div>
+        <div class="form-row">
+          <label for="depart-date">Departure Date</label>
+          <input type="date" id="depart-date" name="depart-date" required>
+        </div>
+        <div class="form-row">
+          <label for="return-date">Return Date</label>
+          <input type="date" id="return-date" name="return-date">
+        </div>
+        <div class="form-row">
+          <label for="cabin-class">Cabin Class</label>
+          <select id="cabin-class" name="cabin-class">
+            <option value="ECONOMY">Economy</option>
+            <option value="PREMIUM_ECONOMY">Premium Economy</option>
+            <option value="BUSINESS">Business</option>
+            <option value="FIRST">First</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="adults">Adults</label>
+          <input type="number" id="adults" name="adults" min="1" max="9" value="1" required>
+        </div>
+        <div class="form-row">
+          <label for="children">Children</label>
+          <input type="number" id="children" name="children" min="0" max="9" value="0">
+        </div>
+        <div class="form-row">
+          <label for="infants">Infants</label>
+          <input type="number" id="infants" name="infants" min="0" max="9" value="0">
+        </div>
+        <div class="form-row">
+          <button type="submit" class="primary-btn" aria-label="Search flights">Search</button>
+        </div>
+      </form>
+      <div id="price-estimate" class="price-estimate"></div>
+    </section>
+    <section id="results" class="card">
+      <h2>Flight Options</h2>
+      <ul id="flights-list"></ul>
+    </section>
+    <section id="example-history" class="card">
+      <h2>Example Search History</h2>
+      <ul>
+        <li>
+          <strong>From:</strong> London (LHR) <strong>To:</strong> New York (JFK)<br>
+          <strong>Departure:</strong> 2026-01-10 <strong>Return:</strong> 2026-01-20<br>
+          <strong>Cabin:</strong> Economy <strong>Adults:</strong> 1 <strong>Children:</strong> 0 <strong>Infants:</strong> 0<br>
+          <strong>Price:</strong> 450 USD
+        </li>
+        <li>
+          <strong>From:</strong> Paris (CDG) <strong>To:</strong> Tokyo (NRT)<br>
+          <strong>Departure:</strong> 2026-02-05 <strong>Return:</strong> 2026-02-15<br>
+          <strong>Cabin:</strong> Business <strong>Adults:</strong> 2 <strong>Children:</strong> 1 <strong>Infants:</strong> 0<br>
+          <strong>Price:</strong> 3200 EUR
+        </li>
+      </ul>
+      <p>See all your searches on the <a href="history.html">History page</a>.</p>
+    </section>
+  </main>
+  <footer>
+    <p>&copy; 2026 FlightFinder. All rights reserved.</p>
+  </footer>
+  <script>
+    const RENDER_SERVER_URL = 'https://your-render-server-url'; // Replace with your actual Render server URL
+
+    // Update fetch URLs to use the Render server
+    const AUTOCOMPLETE_URL = `${RENDER_SERVER_URL}/api/autocomplete`;
+    const FLIGHTS_URL = `${RENDER_SERVER_URL}/api/flights`;
+
+    async function fetchSuggestions(term) {
+      if (!term || term.length < 1) return [];
+      try {
+        const params = new URLSearchParams({ term });
+        const res = await fetch(`${AUTOCOMPLETE_URL}?${params.toString()}`);
+        if (!res.ok) return [];
+        const json = await res.json();
+        return Array.isArray(json) ? json : [];
+      } catch (err) {
+        return [];
+      }
+    }
+
+    document.getElementById('flight-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const priceEstimate = document.getElementById('price-estimate');
+      const flightsList = document.getElementById('flights-list');
+      priceEstimate.textContent = 'Searching...';
+      flightsList.innerHTML = '';
+
+      const origin = document.getElementById('origin').dataset.iata || document.getElementById('origin').value.trim();
+      const destination = document.getElementById('destination').dataset.iata || document.getElementById('destination').value.trim();
+      const depart_date = document.getElementById('depart-date').value;
+      const return_date = document.getElementById('return-date').value;
+      const cabinClass = document.getElementById('cabin-class').value;
+      const adults = document.getElementById('adults').value;
+      const children = document.getElementById('children').value;
+      const infants = document.getElementById('infants').value;
+
+      const params = new URLSearchParams({
+        origin,
+        destination,
+        depart_date,
+        return_date,
+        cabinClass,
+        adults,
+        children,
+        infants
+      });
+
+      try {
+        const response = await fetch(`${FLIGHTS_URL}?${params.toString()}`);
+        const data = await response.json();
+        if (!data || data.length === 0) {
+          priceEstimate.textContent = 'No flights found.';
+          return;
+        }
+
+        const prices = data.map(f => parseFloat(f.price && f.price.total ? f.price.total : 0)).filter(p => p > 0);
+        let minPrice = '';
+        let currency = '';
+        if (prices.length > 0) {
+          minPrice = Math.min(...prices);
+          currency = data[0].price.currency;
+          priceEstimate.textContent = `Estimated price: ${minPrice} ${currency}`;
+        } else {
+          priceEstimate.textContent = '';
+        }
+
+        flightsList.innerHTML = '';
+        data.forEach(flight => {
+          const offer = flight.itineraries[0].segments[0];
+          const li = document.createElement('li');
+          li.className = 'flight-option';
+          li.innerHTML = `<strong>${offer.carrierCode}</strong> | ${flight.travelerPricings[0]?.fareDetailsBySegment[0]?.cabin || cabinClass}<br>
+            <span>From: ${offer.departure.iataCode} To: ${offer.arrival.iataCode}</span><br>
+            <span>Depart: ${offer.departure.at.split('T')[0]} Return: ${return_date || 'N/A'}</span><br>
+            <span class="price">${flight.price.total} ${flight.price.currency}</span>`;
+          flightsList.appendChild(li);
+        });
+      } catch (err) {
+        priceEstimate.textContent = 'Error fetching flights.';
+      }
+    });
+  </script>
+</body>
+</html>

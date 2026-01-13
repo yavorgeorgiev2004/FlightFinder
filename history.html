@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flight Search History</title>
+  <link rel="stylesheet" href="amadeus-demo.css">
+</head>
+<body>
+  <header>
+    <h1>FlightFinder</h1>
+    <nav>
+      <a href="amadeus-demo.html">Home</a>
+      <a href="#" class="active">Search History</a>
+    </nav>
+  </header>
+  <main>
+    <section class="card">
+      <h2>Your Flight Search History</h2>
+      <ul id="history-list"></ul>
+      <button id="clear-history" class="primary-btn">Clear History</button>
+    </section>
+  </main>
+  <footer>
+    <p>&copy; 2026 FlightFinder. All rights reserved.</p>
+  </footer>
+  <script>
+    // Load search history from localStorage
+    function loadHistory() {
+      const historyList = document.getElementById('history-list');
+      const history = JSON.parse(localStorage.getItem('flight_search_history') || '[]');
+      historyList.innerHTML = '';
+      if (history.length === 0) {
+        historyList.innerHTML = '<li>No search history found.</li>';
+        return;
+      }
+      history.reverse().forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'flight-option';
+        li.innerHTML = `<strong>${item.origin} → ${item.destination}</strong><br>
+          <span>Depart: ${item.depart_date} Return: ${item.return_date || 'N/A'}</span><br>
+          <span>Cabin: ${item.cabinClass}, Adults: ${item.adults}, Children: ${item.children}, Infants: ${item.infants}</span><br>
+          <span>Price: ${item.price || 'N/A'}</span>`;
+        historyList.appendChild(li);
+      });
+    }
+    document.getElementById('clear-history').onclick = function() {
+      localStorage.removeItem('flight_search_history');
+      loadHistory();
+    };
+    loadHistory();
+  </script>
+</body>
+</html>
